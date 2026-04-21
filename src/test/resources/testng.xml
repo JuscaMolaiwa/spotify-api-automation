@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<suite name="Spotify API Test Suite" verbose="2" parallel="false">
+
+    <listeners>
+        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
+    </listeners>
+
+    <test name="Authentication Tests">
+        <classes>
+            <class name="com.spotify.api.tests.AuthenticationTest"/>
+        </classes>
+    </test>
+
+    <test name="Albums API Tests">
+        <classes>
+            <class name="com.spotify.api.tests.AlbumsApiTest"/>
+        </classes>
+    </test>
+
+    <test name="Artists API Tests">
+        <classes>
+            <class name="com.spotify.api.tests.ArtistsApiTest"/>
+        </classes>
+    </test>
+
+    <test name="Tracks API Tests">
+        <classes>
+            <class name="com.spotify.api.tests.TracksApiTest"/>
+        </classes>
+    </test>
+
+    <test name="Search API Tests">
+        <classes>
+            <class name="com.spotify.api.tests.SearchApiTest"/>
+        </classes>
+    </test>
+
+    <test name="Playlists API Tests (requires user token)">
+        <classes>
+            <class name="com.spotify.api.tests.PlaylistsApiTest"/>
+        </classes>
+    </test>
+
+</suite>

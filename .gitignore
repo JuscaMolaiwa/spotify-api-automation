@@ -1,0 +1,27 @@
+# sensitive config
+config.properties
+.env
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Maven
+target/
+*.class
+*.log
+
+.DS_Store
+
+# Allure Reports
+allure-results/
+allure-report/
+
+rest-assured.log
+logs/
+
+.allure/
+

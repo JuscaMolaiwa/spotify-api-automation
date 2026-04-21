@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Spotify API Test Framework – Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy this file to config.properties and fill in your credentials.
+# Alternatively, export variables as environment variables or JVM -D properties.
+# NEVER commit real credentials to source control.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Spotify API base URI
+BASE_URI=https://api.spotify.com
+BASE_PATH=/v1
+
+# Spotify Accounts Service
+ACCOUNTS_BASE_URI=https://accounts.spotify.com
+
+# OAuth2 Client Credentials
+# Obtain from: https://developer.spotify.com/dashboard
+CLIENT_ID=YOUR_CLIENT_ID_HERE
+CLIENT_SECRET=YOUR_CLIENT_SECRET_HERE
+GRANT_TYPE=client_credentials
+
+# User Access Token (required for user-scoped endpoints: playlists, library, etc.)
+# Generate via Authorization Code flow with required scopes:
+#   playlist-read-public, playlist-read-collaborative,
+#   playlist-modify-public, playlist-modify-private
+USER_ACCESS_TOKEN=YOUR_USER_ACCESS_TOKEN_HERE
+
+# Logging (true = log request/response to target/rest-assured.log)
+LOG_REQUEST_RESPONSE=true
+
+# Request timeout in milliseconds
+REQUEST_TIMEOUT=30000

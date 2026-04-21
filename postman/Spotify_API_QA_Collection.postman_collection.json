@@ -1,0 +1,758 @@
+{
+  "info": {
+    "_postman_id": "spotify-api-qa-collection-v1",
+    "name": "Spotify Web API – QA Collection",
+    "description": "Comprehensive Postman collection for testing the Spotify Web API.\nCovers Albums, Artists, Tracks, Search, Playlists, and Authentication.\n\nSetup:\n1. Set CLIENT_ID and CLIENT_SECRET in the collection Variables.\n2. Run the 'Get Access Token' request in the Auth folder – the token is auto-saved.\n3. For user-scoped tests, set USER_ACCESS_TOKEN manually.\n\nAll requests inherit the Bearer token from the collection-level authorization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{ACCESS_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "BASE_URL",         "value": "https://api.spotify.com/v1" },
+    { "key": "ACCOUNTS_URL",     "value": "https://accounts.spotify.com" },
+    { "key": "CLIENT_ID",        "value": "YOUR_CLIENT_ID" },
+    { "key": "CLIENT_SECRET",    "value": "YOUR_CLIENT_SECRET" },
+    { "key": "ACCESS_TOKEN",     "value": "" },
+    { "key": "USER_ACCESS_TOKEN","value": "" },
+    { "key": "ALBUM_ID",         "value": "4LH4d3cOWNNsVw41Gqt2kv" },
+    { "key": "ARTIST_ID",        "value": "0k17h0D3J5VfsdmQ1iZtE9" },
+    { "key": "TRACK_ID",         "value": "0vFAbKhyBCsFk43sGbHBGR" },
+    { "key": "PLAYLIST_ID",      "value": "37i9dQZEVXbMDoHDwVN2tF" },
+    { "key": "CREATED_PLAYLIST_ID", "value": "" },
+    { "key": "MARKET",           "value": "ZA" }
+  ],
+  "item": [
+    {
+      "name": "0. Authentication",
+      "item": [
+        {
+          "name": "Get Access Token (Client Credentials)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has access_token', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.access_token).to.be.a('string').and.not.empty;",
+                  "    pm.expect(body.token_type).to.equal('Bearer');",
+                  "    pm.expect(body.expires_in).to.equal(3600);",
+                  "    pm.collectionVariables.set('ACCESS_TOKEN', body.access_token);",
+                  "    console.log('Access token saved to collection variable.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "client_credentials" },
+                { "key": "client_id",  "value": "{{CLIENT_ID}}" },
+                { "key": "client_secret", "value": "{{CLIENT_SECRET}}" }
+              ]
+            },
+            "url": "{{ACCOUNTS_URL}}/api/token",
+            "description": "Obtains a Client Credentials access token and stores it as ACCESS_TOKEN collection variable."
+          }
+        },
+        {
+          "name": "Get Token – Invalid Credentials (Negative)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 for invalid credentials', () => pm.response.to.have.status(400));",
+                  "pm.test('Error field is present', () => {",
+                  "    pm.expect(pm.response.json().error).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type",    "value": "client_credentials" },
+                { "key": "client_id",     "value": "invalid_id" },
+                { "key": "client_secret", "value": "invalid_secret" }
+              ]
+            },
+            "url": "{{ACCOUNTS_URL}}/api/token"
+          }
+        },
+        {
+          "name": "API Call with Invalid Token (Negative)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 for invalid token', () => pm.response.to.have.status(401));",
+                  "pm.test('Error status is 401', () => {",
+                  "    pm.expect(pm.response.json().error.status).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "INVALID_TOKEN_12345", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{BASE_URL}}/albums/{{ALBUM_ID}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Albums",
+      "item": [
+        {
+          "name": "Get Album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has id and type', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.id).to.equal(pm.collectionVariables.get('ALBUM_ID'));",
+                  "    pm.expect(b.type).to.equal('album');",
+                  "    pm.expect(b.name).to.be.a('string').and.not.empty;",
+                  "    pm.expect(b.total_tracks).to.be.above(0);",
+                  "});",
+                  "pm.test('Artists array is not empty', () => {",
+                  "    pm.expect(pm.response.json().artists).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.test('URI has correct format', () => {",
+                  "    pm.expect(pm.response.json().uri).to.match(/^spotify:album:/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/albums/{{ALBUM_ID}}?market={{MARKET}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["albums", "{{ALBUM_ID}}"],
+              "query": [{ "key": "market", "value": "{{MARKET}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Album – Invalid ID (Negative)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 for invalid ID', () => pm.response.to.have.status(400));",
+                  "pm.test('Error status field is 400', () => {",
+                  "    pm.expect(pm.response.json().error.status).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{BASE_URL}}/albums/INVALID_ID_FOR_TESTING"
+          }
+        },
+        {
+          "name": "Get Multiple Albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Albums array has correct length', () => {",
+                  "    pm.expect(pm.response.json().albums).to.be.an('array').with.lengthOf(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/albums?ids=4LH4d3cOWNNsVw41Gqt2kv,2ANVost0y2y52ema1E9xAZ,0ETFjACtuP2ADo6LFhL6HN",
+              "host": ["{{BASE_URL}}"],
+              "path": ["albums"],
+              "query": [{ "key": "ids", "value": "4LH4d3cOWNNsVw41Gqt2kv,2ANVost0y2y52ema1E9xAZ,0ETFjACtuP2ADo6LFhL6HN" }]
+            }
+          }
+        },
+        {
+          "name": "Get Album Tracks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Track list is paginated', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.items).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(b.total).to.be.above(0);",
+                  "    pm.expect(b.limit).to.equal(5);",
+                  "    pm.expect(b.offset).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/albums/{{ALBUM_ID}}/tracks?limit=5&offset=0",
+              "host": ["{{BASE_URL}}"],
+              "path": ["albums", "{{ALBUM_ID}}", "tracks"],
+              "query": [
+                { "key": "limit",  "value": "5" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Artists",
+      "item": [
+        {
+          "name": "Get Artist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Artist object is valid', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.id).to.equal(pm.collectionVariables.get('ARTIST_ID'));",
+                  "    pm.expect(b.type).to.equal('artist');",
+                  "    pm.expect(b.popularity).to.be.within(0, 100);",
+                  "    pm.expect(b.genres).to.be.an('array');",
+                  "    pm.expect(b.images).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{BASE_URL}}/artists/{{ARTIST_ID}}"
+          }
+        },
+        {
+          "name": "Get Artist Albums",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Albums returned as paginated list', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.items).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(b.total).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/artists/{{ARTIST_ID}}/albums?include_groups=album&limit=10",
+              "host": ["{{BASE_URL}}"],
+              "path": ["artists", "{{ARTIST_ID}}", "albums"],
+              "query": [
+                { "key": "include_groups", "value": "album" },
+                { "key": "limit",          "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Artist Top Tracks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns up to 10 tracks', () => {",
+                  "    const tracks = pm.response.json().tracks;",
+                  "    pm.expect(tracks).to.be.an('array');",
+                  "    pm.expect(tracks.length).to.be.at.most(10);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/artists/{{ARTIST_ID}}/top-tracks?market={{MARKET}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["artists", "{{ARTIST_ID}}", "top-tracks"],
+              "query": [{ "key": "market", "value": "{{MARKET}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Related Artists",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Related artists returned', () => {",
+                  "    const artists = pm.response.json().artists;",
+                  "    pm.expect(artists).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(artists.length).to.be.at.most(20);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{BASE_URL}}/artists/{{ARTIST_ID}}/related-artists"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Tracks",
+      "item": [
+        {
+          "name": "Get Track",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Track object has required fields', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.id).to.equal(pm.collectionVariables.get('TRACK_ID'));",
+                  "    pm.expect(b.type).to.equal('track');",
+                  "    pm.expect(b.duration_ms).to.be.above(0);",
+                  "    pm.expect(b.popularity).to.be.within(0, 100);",
+                  "    pm.expect(b.uri).to.match(/^spotify:track:/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/tracks/{{TRACK_ID}}?market={{MARKET}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["tracks", "{{TRACK_ID}}"],
+              "query": [{ "key": "market", "value": "{{MARKET}}" }]
+            }
+          }
+        },
+        {
+          "name": "Get Audio Features",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All audio feature coefficients are between 0 and 1', () => {",
+                  "    const b = pm.response.json();",
+                  "    ['danceability','energy','speechiness','acousticness',",
+                  "     'instrumentalness','liveness','valence'].forEach(f => {",
+                  "        pm.expect(b[f], f).to.be.within(0, 1);",
+                  "    });",
+                  "});",
+                  "pm.test('Tempo and duration_ms are positive', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.tempo).to.be.above(0);",
+                  "    pm.expect(b.duration_ms).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{BASE_URL}}/audio-features/{{TRACK_ID}}"
+          }
+        },
+        {
+          "name": "Get Audio Analysis",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Analysis contains required sections', () => {",
+                  "    const b = pm.response.json();",
+                  "    ['meta','track','bars','beats','sections','segments','tatums'].forEach(k => {",
+                  "        pm.expect(b, k).to.have.property(k);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{BASE_URL}}/audio-analysis/{{TRACK_ID}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Search",
+      "item": [
+        {
+          "name": "Search for Artist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Artists results are present', () => {",
+                  "    const artists = pm.response.json().artists;",
+                  "    pm.expect(artists.items).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(artists.total).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/search?q=Pink+Floyd&type=artist&limit=5",
+              "host": ["{{BASE_URL}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "q",     "value": "Pink Floyd" },
+                { "key": "type",  "value": "artist" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search for Track",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Track results have required fields', () => {",
+                  "    const item = pm.response.json().tracks.items[0];",
+                  "    pm.expect(item.id).to.be.a('string').and.not.empty;",
+                  "    pm.expect(item.name).to.be.a('string').and.not.empty;",
+                  "    pm.expect(item.duration_ms).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/search?q=Comfortably+Numb&type=track&limit=5&market={{MARKET}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "q",      "value": "Comfortably Numb" },
+                { "key": "type",   "value": "track" },
+                { "key": "limit",  "value": "5" },
+                { "key": "market", "value": "{{MARKET}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Multi-Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All three result types present', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.artists.items).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(b.albums.items).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(b.tracks.items).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/search?q=Pink+Floyd&type=artist,album,track&limit=3",
+              "host": ["{{BASE_URL}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "q",    "value": "Pink Floyd" },
+                { "key": "type", "value": "artist,album,track" },
+                { "key": "limit","value": "3" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search – Missing Query (Negative)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 when query missing', () => pm.response.to.have.status(400));",
+                  "pm.test('Error status is 400', () => {",
+                  "    pm.expect(pm.response.json().error.status).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/search?type=artist",
+              "host": ["{{BASE_URL}}"],
+              "path": ["search"],
+              "query": [{ "key": "type", "value": "artist" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Playlists (User Token Required)",
+      "item": [
+        {
+          "name": "Get Public Playlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Playlist data is valid', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.id).to.equal(pm.collectionVariables.get('PLAYLIST_ID'));",
+                  "    pm.expect(b.type).to.equal('playlist');",
+                  "    pm.expect(b.tracks.items).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{USER_ACCESS_TOKEN}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": "{{BASE_URL}}/playlists/{{PLAYLIST_ID}}"
+          }
+        },
+        {
+          "name": "Create Playlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Playlist created with correct name', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.name).to.equal('QA Postman Test Playlist');",
+                  "    pm.expect(b.id).to.be.a('string').and.not.empty;",
+                  "    pm.collectionVariables.set('CREATED_PLAYLIST_ID', b.id);",
+                  "    console.log('Created playlist ID saved:', b.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{USER_ACCESS_TOKEN}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QA Postman Test Playlist\",\n  \"description\": \"Created by Postman automation\",\n  \"public\": false\n}"
+            },
+            "url": "{{BASE_URL}}/users/{{SPOTIFY_USER_ID}}/playlists",
+            "description": "Create a new private playlist. Set SPOTIFY_USER_ID variable to the authenticated user's ID."
+          }
+        },
+        {
+          "name": "Update Playlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{USER_ACCESS_TOKEN}}", "type": "string" }]
+            },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QA Postman Test Playlist – Updated\",\n  \"description\": \"Updated via Postman PUT test\"\n}"
+            },
+            "url": "{{BASE_URL}}/playlists/{{CREATED_PLAYLIST_ID}}"
+          }
+        },
+        {
+          "name": "Add Tracks to Playlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Snapshot ID returned', () => {",
+                  "    pm.expect(pm.response.json().snapshot_id).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{USER_ACCESS_TOKEN}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uris\": [\n    \"spotify:track:0vFAbKhyBCsFk43sGbHBGR\",\n    \"spotify:track:7tFiyTwD0nx5a1eklYtX2J\"\n  ]\n}"
+            },
+            "url": "{{BASE_URL}}/playlists/{{CREATED_PLAYLIST_ID}}/tracks"
+          }
+        },
+        {
+          "name": "Remove Track from Playlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Snapshot ID returned', () => {",
+                  "    pm.expect(pm.response.json().snapshot_id).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{USER_ACCESS_TOKEN}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tracks\": [\n    { \"uri\": \"spotify:track:0vFAbKhyBCsFk43sGbHBGR\" }\n  ]\n}"
+            },
+            "url": "{{BASE_URL}}/playlists/{{CREATED_PLAYLIST_ID}}/tracks"
+          }
+        },
+        {
+          "name": "Get Playlist Tracks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tracks are paginated', () => {",
+                  "    const b = pm.response.json();",
+                  "    pm.expect(b.items).to.be.an('array');",
+                  "    pm.expect(b.total).to.be.a('number');",
+                  "    pm.expect(b.limit).to.equal(10);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{USER_ACCESS_TOKEN}}", "type": "string" }]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/playlists/{{PLAYLIST_ID}}/tracks?limit=10&offset=0",
+              "host": ["{{BASE_URL}}"],
+              "path": ["playlists", "{{PLAYLIST_ID}}", "tracks"],
+              "query": [
+                { "key": "limit",  "value": "10" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
