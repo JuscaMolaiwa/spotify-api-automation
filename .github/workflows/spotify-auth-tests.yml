@@ -27,6 +27,17 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Install Allure CLI
+        run: |
+          curl -o allure.tgz -L https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
+          tar -zxvf allure.tgz
+          sudo mv allure-2.24.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
+          allure --version
+
+      - name: Resolve dependencies
+        run: mvn dependency:resolve
+
       - name: Run Authentication Tests
         env:
           CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
@@ -38,27 +49,16 @@ jobs:
             -DCLIENT_SECRET=$CLIENT_SECRET \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml
 
-      - name: Upload Allure Results
+      - name: Generate Single-File Allure Report
+        if: always()
+        run: allure generate target/allure-results --clean --single-file -o target/allure-report
+
+      - name: Upload Single-File Allure Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
-          path: target/allure-results
-          retention-days: 7
-
-      - name: Generate Allure Report
-        if: always()
-        run: |
-          mvn allure:report \
-            -DCLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }} \
-            -DCLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}
-
-      - name: Upload Allure HTML Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-html-report
-          path: target/site/allure-maven-plugin
+          name: allure-report
+          path: target/allure-report/index.html
           retention-days: 7
 
       - name: Upload Surefire Reports on Failure
