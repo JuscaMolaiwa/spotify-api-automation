@@ -1,0 +1,70 @@
+name: Spotify Auth API Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Runs daily at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+  # Allows manual trigger from the GitHub Actions UI
+
+jobs:
+  auth-tests:
+    name: Run Authentication Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Authentication Tests
+        env:
+          CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        run: |
+          mvn clean test \
+            -Dtest=AuthenticationTest \
+            -DCLIENT_ID=$CLIENT_ID \
+            -DCLIENT_SECRET=$CLIENT_SECRET \
+            -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml
+
+      - name: Upload Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: target/allure-results
+          retention-days: 7
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          mvn allure:report \
+            -DCLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }} \
+            -DCLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}
+
+      - name: Upload Allure HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-html-report
+          path: target/site/allure-maven-plugin
+          retention-days: 7
+
+      - name: Upload Surefire Reports on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports
+          retention-days: 7
