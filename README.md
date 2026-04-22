@@ -266,15 +266,15 @@ newman run postman/Spotify_API_QA_Collection.postman_collection.json \
 mvn clean test
 ```
 
+```bash
+# Generate and serve the HTML report
+allure serve target/allure-results
+```
+
 ### Or generate a static report
 ```bash
 mvn allure:report
 # Report available at: target/site/allure-maven-plugin/index.html
-```
-
-```bash
-# Generate and serve the HTML report
-allure serve
 ```
 
 The report provides:
